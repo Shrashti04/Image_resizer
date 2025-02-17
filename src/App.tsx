@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+// src/App.tsx
+import  { useState } from 'react';
 import { ImageUploader } from './components/ImageUploader';
 import { ImagePreview } from './components/ImagePreview';
 import { SizeConfigurator } from './components/SizeConfigurator';
 import { processImage, downloadAllImages, defaultSizes } from './utils/imageProcessor';
+import { publishImages } from './utils/xApi';
 import { ProcessedImage, ImageSize } from './types';
 import { Image, AlertCircle } from 'lucide-react';
+import { XAuth } from './components/XAuth';
 
 function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processedImages, setProcessedImages] = useState<ProcessedImage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sizes, setSizes] = useState<ImageSize[]>(defaultSizes);
+  const [xToken, setXToken] = useState<string | null>(null);
 
   const handleImageSelect = async (file: File) => {
     setIsProcessing(true);
@@ -19,6 +23,13 @@ function App() {
     try {
       const processed = await processImage(file, sizes);
       setProcessedImages(processed);
+
+      if (xToken) {
+        // Automatically publish images via the X API.
+        await publishImages(xToken, processed);
+      } else {
+        console.log('X token not available, skipping auto publish');
+      }
     } catch (err) {
       setError('Failed to process image. Please try again.');
       console.error('Error processing image:', err);
@@ -34,6 +45,10 @@ function App() {
     }
   };
 
+  const handleAuth = (token: string) => {
+    setXToken(token);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       <div className="max-w-5xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
@@ -41,13 +56,13 @@ function App() {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 mb-4">
             <Image className="h-10 w-10 text-blue-600" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Image Resizer Pro
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Image Resizer Pro</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Upload your image and we'll automatically resize it to all the formats you need
+            Upload your image and we'll automatically resize it to the required formats and publish them privately on X!
           </p>
         </div>
+
+        {!xToken && <XAuth onAuth={handleAuth} />}
 
         <div className="space-y-8">
           <div className="bg-white rounded-2xl shadow-sm p-6">
